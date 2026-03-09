@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIBEATHON Round 2 - Link Management Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -456,7 +457,7 @@
         // Supabase config (free tier)
         const SUPABASE_URL = 'https://ztfwuxmjsaogqywmwlfw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_EKwsb8YUiZw5zBIFYj0YHA_8JIRAgQf';
-        let client;
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
         let links = [];
@@ -724,36 +725,29 @@
         window.addEventListener('hashchange', handleRoute);
 
         // Initial load logic
-        document.addEventListener("DOMContentLoaded", () => {
-            if (!window.supabase) {
-                return showError("Critical Error: Supabase CDN failed to load. Check your adblocker or internet connection.");
-            }
-            client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const isRedirectRoute = !!window.location.hash;
 
-            const isRedirectRoute = !!window.location.hash;
+        if (isRedirectRoute) {
+            handleRoute();
+        } else {
+            client.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    currentUser = session.user;
+                    showDashboard();
+                } else {
+                    showAuth();
+                }
+            });
 
-            if (isRedirectRoute) {
-                handleRoute();
-            } else {
-                client.auth.getSession().then(({ data: { session } }) => {
-                    if (session) {
-                        currentUser = session.user;
-                        showDashboard();
-                    } else {
-                        showAuth();
-                    }
-                });
-
-                client.auth.onAuthStateChange((event, session) => {
-                    if (event === 'SIGNED_IN') {
-                        currentUser = session.user;
-                        showDashboard();
-                    } else if (event === 'SIGNED_OUT') {
-                        showAuth();
-                    }
-                });
-            }
-        });
+            client.auth.onAuthStateChange((event, session) => {
+                if (event === 'SIGNED_IN') {
+                    currentUser = session.user;
+                    showDashboard();
+                } else if (event === 'SIGNED_OUT') {
+                    showAuth();
+                }
+            });
+        }
     </script>
 </body>
 

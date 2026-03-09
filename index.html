@@ -38,6 +38,7 @@
             font-weight: 700;
             background: linear-gradient(135deg, #38bdf8, #06b6d4);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -192,6 +193,7 @@
             font-weight: 700;
             background: linear-gradient(135deg, #38bdf8, #06b6d4);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -322,7 +324,7 @@
         // Supabase config (free tier)
         const SUPABASE_URL = 'https://ztfwuxmjsaogqywmwlfw.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_EKwsb8YUiZw5zBIFYj0YHA_8JIRAgQf';
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
         let links = [];
@@ -332,7 +334,7 @@
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await client.auth.signInWithPassword({ email, password });
             if (error) return showError(error.message);
             currentUser = data.user;
             showDashboard();
@@ -342,7 +344,7 @@
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
 
-            const { data, error } = await supabase.auth.signUp({ email, password });
+            const { data, error } = await client.auth.signUp({ email, password });
             if (error) return showError(error.message);
             showMessage('Check email for confirmation!');
         }
@@ -353,7 +355,7 @@
         }
 
         async function signOut() {
-            await supabase.auth.signOut();
+            await client.auth.signOut();
             showAuth();
         }
 
@@ -398,7 +400,7 @@
             const shortUrl = `${window.location.origin}/#/${id}`;
             const createdAt = new Date().toISOString();
 
-            const { error } = await supabase
+            const { error } = await client
                 .from('links')
                 .insert([{
                     id, original_url: originalUrl, short_url: shortUrl,
@@ -415,7 +417,7 @@
         }
 
         async function refreshLinks() {
-            const { data, error } = await supabase
+            const { data, error } = await client
                 .from('links')
                 .select('*')
                 .eq('user_id', currentUser.id)
@@ -453,7 +455,7 @@
 
         async function toggleLink(id) {
             const link = links.find(l => l.id === id);
-            const { error } = await supabase
+            const { error } = await client
                 .from('links')
                 .update({ is_active: !link.is_active })
                 .eq('id', id)
@@ -466,7 +468,7 @@
             const link = links.find(l => l.id === id);
             const newUrl = prompt('New destination URL:', link.original_url);
             if (newUrl && isValidUrl(newUrl)) {
-                const { error } = await supabase
+                const { error } = await client
                     .from('links')
                     .update({ original_url: newUrl })
                     .eq('id', id)
@@ -508,7 +510,7 @@
             document.getElementById('dashboard').style.display = 'none';
 
             try {
-                const { data: link, error } = await supabase
+                const { data: link, error } = await client
                     .from('links')
                     .select('*')
                     .eq('id', hashId)
@@ -520,7 +522,7 @@
                 }
 
                 // Update click immediately
-                await supabase
+                await client
                     .from('links')
                     .update({ current_clicks: link.current_clicks + 1, last_accessed: new Date().toISOString() })
                     .eq('id', link.id);
@@ -539,7 +541,7 @@
         if (isRedirectRoute) {
             handleRoute();
         } else {
-            supabase.auth.getSession().then(({ data: { session } }) => {
+            client.auth.getSession().then(({ data: { session } }) => {
                 if (session) {
                     currentUser = session.user;
                     showDashboard();
@@ -548,7 +550,7 @@
                 }
             });
 
-            supabase.auth.onAuthStateChange((event, session) => {
+            client.auth.onAuthStateChange((event, session) => {
                 if (event === 'SIGNED_IN') {
                     currentUser = session.user;
                     showDashboard();

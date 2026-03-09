@@ -5,80 +5,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIBEATHON Round 2 - Link Management Platform</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-primary: #38bdf8;
+            --accent-secondary: #0ea5e9;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #020617 0%, #1e293b 100%);
-            color: #e2e8f0;
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.12), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.12), transparent 25%);
+            color: var(--text-main);
             min-height: 100vh;
         }
 
         .app {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2.5rem;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
         }
 
         .logo {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #38bdf8, #06b6d4);
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
             -webkit-background-clip: text;
             background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: transparent;
         }
 
-        .auth-btns {
-            display: flex;
-            gap: 1rem;
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         button {
             padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 9999px;
-            font-weight: 500;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .primary {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
+            box-shadow: 0 4px 14px 0 rgba(14, 165, 233, 0.39);
         }
 
-        .primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+        .primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.23);
+            filter: brightness(110%);
+        }
+
+        .primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
         .secondary {
-            background: #334155;
-            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border);
         }
 
         .secondary:hover {
-            background: #475569;
-        }
-
-        .danger {
-            background: #ef4444;
-            color: white;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .form-group {
@@ -89,122 +122,204 @@
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 500;
-            color: #94a3b8;
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
 
-        input,
-        select {
+        input {
             width: 100%;
-            padding: 0.875rem 1rem;
-            border: 1px solid #334155;
+            padding: 0.875rem 1.25rem;
+            border: 1px solid var(--border);
             border-radius: 12px;
-            background: #0f172a;
-            color: #e2e8f0;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
             font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-
-        input:focus,
-        select:focus {
+            transition: all 0.2s;
             outline: none;
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
         }
 
-        .dashboard {
+        input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        .stats-grid {
             display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
+            margin: 2rem 0;
         }
 
-        .card {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid #334155;
-            border-radius: 16px;
+        .stat-card {
+            background: rgba(30, 41, 59, 0.4);
             padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            text-align: center;
             backdrop-filter: blur(10px);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 200px 100px 120px;
+            gap: 1.5rem;
+            padding: 1rem 1.5rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
         }
 
         .link-row {
             display: grid;
-            grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 120px;
-            gap: 1rem;
-            align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid #334155;
+            grid-template-columns: 2fr 1fr 200px 100px 120px;
+            gap: 1.5rem;
+            align-items: start;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+        }
+
+        .link-row:hover {
+            background: rgba(255, 255, 255, 0.02);
         }
 
         .link-row:last-child {
             border-bottom: none;
         }
 
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .active {
-            background: rgba(34, 197, 94, 0.2);
-            color: #4ade80;
-        }
-
-        .inactive {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-        }
-
-        .expired {
-            background: rgba(148, 163, 184, 0.2);
-            color: #94a3b8;
-        }
-
-        .timestamp {
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
-
-        .actions {
+        .url-cell {
             display: flex;
+            flex-direction: column;
             gap: 0.5rem;
         }
 
-        .copy-btn {
-            background: #059669;
-            color: white;
+        .url-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
             padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: #818cf8;
+            text-decoration: underline;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .active {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .inactive {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .expired {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .meta-cell {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .copy-icon-btn {
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .copy-icon-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .action-btns button {
+            padding: 0.4rem 0.75rem;
             font-size: 0.8rem;
+            border-radius: 6px;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 1.5rem;
-        }
-
-        .stat-number {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #38bdf8, #06b6d4);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        @media (max-width: 768px) {
-            .link-row {
-                grid-template-columns: 1fr 1fr;
-                font-size: 0.9rem;
+        @media (max-width: 1024px) {
+            .table-header {
+                display: none;
             }
 
-            .app {
-                padding: 1rem;
+            .link-row {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                margin-bottom: 1rem;
+            }
+
+            .link-row>div {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .action-btns {
+                flex-direction: row;
             }
         }
     </style>
@@ -294,31 +409,48 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number" id="total-links">0</div>
-                    <div>Total Links</div>
+                    <div class="stat-label">Total Links</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="total-clicks">0</div>
-                    <div>Total Clicks</div>
+                    <div class="stat-label">Total Clicks</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number" id="active-links">0</div>
-                    <div>Active Links</div>
+                    <div class="stat-label">Active Links</div>
                 </div>
             </div>
 
             <!-- Links table -->
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div class="card" style="padding: 0; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
                     <h2>My Links</h2>
-                    <button class="secondary" onclick="refreshLinks()">Refresh</button>
+                    <button class="secondary" onclick="refreshLinks()">Refresh Data</button>
+                </div>
+                <div class="table-header">
+                    <div>Original Destination</div>
+                    <div>Short URLs</div>
+                    <div>Clicks</div>
+                    <div>Status</div>
+                    <div>Actions</div>
                 </div>
                 <div id="links-container">
-                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">No links yet. Create one above!
+                    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">No links yet. Create your
+                        first short link above!
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Quick SVG icons included directly -->
+    <svg style="display: none;">
+        <symbol id="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </symbol>
+    </svg>
 
     <script>
         // Supabase config (free tier)
@@ -459,11 +591,6 @@
         function renderLinks() {
             const container = document.getElementById('links-container');
 
-            if (links.length === 0) {
-                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #94a3b8;">No links yet. Create one above!</div>';
-                return;
-            }
-
             container.innerHTML = links.map(link => {
                 const isExpired = link.max_clicks && link.current_clicks >= link.max_clicks;
                 const activeStatus = link.is_active && !isExpired ? 'active' : (!link.is_active ? 'inactive' : 'expired');
@@ -472,33 +599,54 @@
 
                 return `
         <div class="link-row">
-          <div><a href="${link.original_url}" target="_blank" style="color: #38bdf8; word-break: break-all;">${link.original_url.length > 40 ? link.original_url.slice(0, 40) + '...' : link.original_url}</a></div>
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <a href="${link.short_url}" target="_blank" style="font-size: 0.85rem; color: #4ade80;">${link.short_url}</a>
-            <a href="${shortIdUrl}" target="_blank" style="font-size: 0.8rem; color: #94a3b8;">${shortIdUrl}</a>
-            <button class="copy-btn" style="width: fit-content; margin-top: 4px;" onclick="event.preventDefault(); copyShortUrl('${link.short_url}')">Copy API Link</button>
-            <button class="copy-btn" style="width: fit-content; background: #475569;" onclick="event.preventDefault(); copyShortUrl('${shortIdUrl}')">Copy Local Link</button>
+          <div class="url-cell" style="word-break: break-all; padding-right: 1rem;">
+             <a href="${link.original_url}" target="_blank" style="font-weight: 500;">${link.original_url.length > 50 ? link.original_url.slice(0, 50) + '...' : link.original_url}</a>
+             <div class="meta-cell">
+                <span>Created: ${new Date(link.created_at).toLocaleDateString()}</span>
+             </div>
           </div>
-          <div>${link.current_clicks || 0}/${link.max_clicks || '∞'}</div>
-          <div class="${activeStatus} status-badge">${activeText}</div>
-          <div class="timestamp">${new Date(link.created_at).toLocaleString()}</div>
-          <div class="timestamp">${link.last_accessed ? new Date(link.last_accessed).toLocaleString() : 'Never'}</div>
-          <div class="actions" style="flex-direction: column;">
-            <button class="secondary" onclick="toggleLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">${link.is_active ? 'Disable' : 'Enable'}</button>
-            <button class="secondary" onclick="editLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
+          
+          <div class="url-cell">
+            <div class="url-group">
+                <a href="${link.short_url}" target="_blank" style="font-size: 0.85rem; color: #34d399; flex-grow: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${link.short_url.replace(/^https?:\/\//, '')} (API)</a>
+                <button class="copy-icon-btn" onclick="copyShortUrl('${link.short_url}')" title="Copy API Link">
+                    <svg width="14" height="14"><use href="#icon-copy"></use></svg>
+                </button>
+            </div>
+            <div class="url-group">
+                <a href="${shortIdUrl}" target="_blank" style="font-size: 0.85rem; color: var(--text-muted); flex-grow: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">/${link.id} (Local)</a>
+                <button class="copy-icon-btn" onclick="copyShortUrl('${shortIdUrl}')" title="Copy Local Link">
+                    <svg width="14" height="14"><use href="#icon-copy"></use></svg>
+                </button>
+            </div>
+          </div>
+          
+          <div class="meta-cell">
+            <div style="font-size: 1.1rem; font-weight: 600; color: var(--text-main);">${link.current_clicks || 0} <span style="font-weight: 400; color: var(--text-muted); font-size: 0.85rem;">/ ${link.max_clicks || '∞'}</span></div>
+            <span style="font-size: 0.75rem;">Last: ${link.last_accessed ? new Date(link.last_accessed).toLocaleDateString() : 'Never'}</span>
+          </div>
+          
+          <div>
+            <span class="status-badge ${activeStatus}">
+                <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:6px;"></span>
+                ${activeText}
+            </span>
+          </div>
+          
+          <div class="action-btns">
+            <button class="secondary" onclick="toggleLink('${link.id}', ${link.is_active})">${link.is_active ? 'Disable' : 'Enable'}</button>
+            <button class="secondary" onclick="editLink('${link.id}')">Edit URL</button>
           </div>
         </div>
       `;
             }).join('');
         }
 
-        async function toggleLink(id) {
-            const link = links.find(l => l.id === id);
+        async function toggleLink(id, currentActiveState) {
             const { error } = await client
                 .from('links')
-                .update({ is_active: !link.is_active })
-                .eq('id', id)
-                .eq('user_id', currentUser.id);
+                .update({ is_active: !currentActiveState })
+                .eq('id', id);
 
             if (!error) refreshLinks();
         }

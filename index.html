@@ -400,10 +400,37 @@
             const shortUrl = `${window.location.origin}/#/${id}`;
             const createdAt = new Date().toISOString();
 
+            document.querySelector('#dashboard .primary').textContent = 'Generating...';
+            document.querySelector('#dashboard .primary').disabled = true;
+
+            let apiUrlStr = "";
+            try {
+                // Fetch external short URL
+                try {
+                    const response = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(originalUrl)}`);
+                    if (!response.ok) throw new Error("Failed to shorten via API.");
+                    apiUrlStr = await response.text();
+                } catch (err) {
+                    const fallbackResponse = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(originalUrl)}`);
+                    if (!fallbackResponse.ok) throw new Error("Failed to shorten via Fallback API.");
+                    apiUrlStr = await fallbackResponse.text();
+                }
+
+                if (!apiUrlStr.startsWith("http")) apiUrlStr = "https://" + apiUrlStr;
+
+            } catch (err) {
+                showError("Failed to generate external API link, using local only.");
+                apiUrlStr = shortUrl;
+            }
+
+            document.querySelector('#dashboard .primary').textContent = 'Create Short Link';
+            document.querySelector('#dashboard .primary').disabled = false;
+
+
             const { error } = await client
                 .from('links')
                 .insert([{
-                    id, original_url: originalUrl, short_url: shortUrl,
+                    id, original_url: originalUrl, short_url: apiUrlStr,
                     max_clicks: maxClicks, current_clicks: 0, is_active: true,
                     created_at: createdAt, last_accessed: null, user_id: currentUser.id
                 }]);
@@ -437,20 +464,32 @@
                 return;
             }
 
-            container.innerHTML = links.map(link => `
+            container.innerHTML = links.map(link => {
+                const isExpired = link.max_clicks && link.current_clicks >= link.max_clicks;
+                const activeStatus = link.is_active && !isExpired ? 'active' : (!link.is_active ? 'inactive' : 'expired');
+                const activeText = link.is_active && !isExpired ? 'Active' : (!link.is_active ? 'Disabled' : 'Expired');
+                const shortIdUrl = `${window.location.origin}/#/${link.id}`;
+
+                return `
         <div class="link-row">
-          <div><a href="${link.original_url}" target="_blank" style="color: #38bdf8;">${link.original_url.slice(0, 40)}...</a></div>
-          <div><a href="${link.short_url}" target="_blank" class="copy-btn" onclick="event.preventDefault(); copyShortUrl('${link.short_url}')">Copy</a></div>
-          <div>${link.current_clicks}/${link.max_clicks || '∞'}</div>
-          <div class="${{ 'active': link.is_active && (!link.max_clicks || link.current_clicks < link.max_clicks), 'inactive': !link.is_active, 'expired': link.max_clicks && link.current_clicks >= link.max_clicks }[true]}">${{ 'active': 'Active', 'inactive': 'Disabled', 'expired': 'Expired' }[true]}</div>
+          <div><a href="${link.original_url}" target="_blank" style="color: #38bdf8; word-break: break-all;">${link.original_url.length > 40 ? link.original_url.slice(0, 40) + '...' : link.original_url}</a></div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <a href="${link.short_url}" target="_blank" style="font-size: 0.85rem; color: #4ade80;">${link.short_url}</a>
+            <a href="${shortIdUrl}" target="_blank" style="font-size: 0.8rem; color: #94a3b8;">${shortIdUrl}</a>
+            <button class="copy-btn" style="width: fit-content; margin-top: 4px;" onclick="event.preventDefault(); copyShortUrl('${link.short_url}')">Copy API Link</button>
+            <button class="copy-btn" style="width: fit-content; background: #475569;" onclick="event.preventDefault(); copyShortUrl('${shortIdUrl}')">Copy Local Link</button>
+          </div>
+          <div>${link.current_clicks || 0}/${link.max_clicks || '∞'}</div>
+          <div class="${activeStatus} status-badge">${activeText}</div>
           <div class="timestamp">${new Date(link.created_at).toLocaleString()}</div>
           <div class="timestamp">${link.last_accessed ? new Date(link.last_accessed).toLocaleString() : 'Never'}</div>
-          <div class="actions">
+          <div class="actions" style="flex-direction: column;">
             <button class="secondary" onclick="toggleLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">${link.is_active ? 'Disable' : 'Enable'}</button>
             <button class="secondary" onclick="editLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
           </div>
         </div>
-      `).join('');
+      `;
+            }).join('');
         }
 
         async function toggleLink(id) {
@@ -522,9 +561,10 @@
                 }
 
                 // Update click immediately
+                const newClicks = (link.current_clicks || 0) + 1;
                 await client
                     .from('links')
-                    .update({ current_clicks: link.current_clicks + 1, last_accessed: new Date().toISOString() })
+                    .update({ current_clicks: newClicks, last_accessed: new Date().toISOString() })
                     .eq('id', link.id);
 
                 window.location.href = link.original_url;

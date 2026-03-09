@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VIBEATHON Round 2 - Link Management Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background: linear-gradient(135deg,#020617 0%,#1e293b 100%); color: #e2e8f0; min-height: 100vh; }
+    .app { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .logo { font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg,#38bdf8,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .auth-btns { display: flex; gap: 1rem; }
+    button { padding: 0.75rem 1.5rem; border: none; border-radius: 9999px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+    .primary { background: linear-gradient(135deg,#22c55e,#16a34a); color: white; }
+    .primary:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(34,197,94,0.3); }
+    .secondary { background: #334155; color: #e2e8f0; }
+    .secondary:hover { background: #475569; }
+    .danger { background: #ef4444; color: white; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #94a3b8; }
+    input, select { width: 100%; padding: 0.875rem 1rem; border: 1px solid #334155; border-radius: 12px; background: #0f172a; color: #e2e8f0; font-size: 1rem; transition: border-color 0.2s; }
+    input:focus, select:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 3px rgba(56,189,248,0.1); }
+    .dashboard { display: grid; gap: 1.5rem; }
+    .card { background: rgba(15,23,42,0.8); border: 1px solid #334155; border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(10px); }
+    .link-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr 1fr 120px; gap: 1rem; align-items: center; padding: 1rem; border-bottom: 1px solid #334155; }
+    .link-row:last-child { border-bottom: none; }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+    .active { background: rgba(34,197,94,0.2); color: #4ade80; }
+    .inactive { background: rgba(239,68,68,0.2); color: #f87171; }
+    .expired { background: rgba(148,163,184,0.2); color: #94a3b8; }
+    .timestamp { font-size: 0.8rem; color: #94a3b8; }
+    .actions { display: flex; gap: 0.5rem; }
+    .copy-btn { background: #059669; color: white; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 1rem; margin-top: 1rem; }
+    .stat-card { text-align: center; padding: 1.5rem; }
+    .stat-number { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg,#38bdf8,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    @media (max-width: 768px) { .link-row { grid-template-columns: 1fr 1fr; font-size: 0.9rem; } .app { padding: 1rem; } }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- Loading -->
+    <div id="loading" style="text-align: center; padding: 4rem;">
+      <div style="font-size: 1.5rem; margin-bottom: 1rem;">🔗 Link Management Platform</div>
+      <div>Loading...</div>
+    </div>
+
+    <!-- Auth screens -->
+    <div id="auth-screen" style="display: none;">
+      <div class="header">
+        <div class="logo">🔗 LinkHub</div>
+      </div>
+      <div class="card" style="max-width: 400px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Welcome</h1>
+          <p style="color: #94a3b8;">Manage your short links</p>
+        </div>
+        <div id="login-form">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="user@example.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="••••••••">
+          </div>
+          <button class="primary" style="width: 100%;" onclick="signIn()">Sign In</button>
+          <div style="text-align: center; margin-top: 1rem;">
+            <button class="secondary" onclick="signUp()" style="width: 100%; margin-bottom: 0.5rem;">Create Account</button>
+            <a href="#" onclick="showForgotPassword()" style="color: #38bdf8; font-size: 0.9rem;">Forgot password?</a>
+          </div>
+        </div>
+        <div id="signup-form" style="display: none;">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="signup-email" placeholder="user@example.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="signup-password" placeholder="••••••••">
+          </div>
+          <button class="primary" style="width: 100%;" onclick="signUpConfirm()">Create Account</button>
+          <button class="secondary" onclick="showLogin()" style="width: 100%; margin-top: 0.5rem;">Back to Sign In</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" style="display: none;">
+      <div class="header">
+        <div class="logo">🔗 LinkHub</div>
+        <div class="auth-btns">
+          <span id="user-email" style="color: #94a3b8;"></span>
+          <button class="secondary" onclick="signOut()">Logout</button>
+        </div>
+      </div>
+
+      <!-- Create link form -->
+      <div class="card">
+        <h2 style="margin-bottom: 1.5rem;">Create New Link</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label>Destination URL</label>
+            <input type="url" id="dest-url" placeholder="https://example.com">
+          </div>
+          <div class="form-group">
+            <label>Max Clicks (optional)</label>
+            <input type="number" id="max-clicks" placeholder="Unlimited" min="1">
+          </div>
+          <div style="padding-top: 2.25rem;">
+            <button class="primary" onclick="createLink()" style="width: 100%; height: 100%;">Create Short Link</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-links">0</div>
+          <div>Total Links</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="total-clicks">0</div>
+          <div>Total Clicks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="active-links">0</div>
+          <div>Active Links</div>
+        </div>
+      </div>
+
+      <!-- Links table -->
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h2>My Links</h2>
+          <button class="secondary" onclick="refreshLinks()">Refresh</button>
+        </div>
+        <div id="links-container">
+          <div style="text-align: center; padding: 2rem; color: #94a3b8;">No links yet. Create one above!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Supabase config (free tier)
+    const SUPABASE_URL = 'https://your-project.supabase.co';
+    const SUPABASE_ANON_KEY = 'your-anon-key';
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let links = [];
+
+    // Auth
+    async function signIn() {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return showError(error.message);
+      currentUser = data.user;
+      showDashboard();
+    }
+
+    async function signUp() {
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) return showError(error.message);
+      showMessage('Check email for confirmation!');
+    }
+
+    async function signUpConfirm() {
+      await signUp();
+      showLogin();
+    }
+
+    async function signOut() {
+      await supabase.auth.signOut();
+      showAuth();
+    }
+
+    // UI
+    function showAuth() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'block';
+      document.getElementById('dashboard').style.display = 'none';
+    }
+
+    function showDashboard() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      document.getElementById('user-email').textContent = currentUser.email;
+      refreshLinks();
+    }
+
+    function showError(msg) {
+      const errorDiv = document.getElementById('errorMsg') || createErrorDiv();
+      errorDiv.textContent = msg;
+      errorDiv.style.display = 'block';
+      setTimeout(() => errorDiv.style.display = 'none', 5000);
+    }
+
+    function createErrorDiv() {
+      const div = document.createElement('div');
+      div.id = 'errorMsg';
+      div.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem; background: #ef4444; color: white; border-radius: 8px; z-index: 1000;';
+      document.body.appendChild(div);
+      return div;
+    }
+
+    // Links CRUD
+    async function createLink() {
+      const originalUrl = document.getElementById('dest-url').value.trim();
+      const maxClicks = parseInt(document.getElementById('max-clicks').value) || null;
+
+      if (!originalUrl || !isValidUrl(originalUrl)) return showError('Valid URL required');
+
+      const id = 'lnk_' + Math.random().toString(36).substr(2, 8);
+      const shortUrl = `${window.location.origin}/#/${id}`;
+      const createdAt = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('links')
+        .insert([{
+          id, original_url: originalUrl, short_url: shortUrl,
+          max_clicks: maxClicks, current_clicks: 0, is_active: true,
+          created_at: createdAt, last_accessed: null, user_id: currentUser.id
+        }]);
+
+      if (error) return showError(error.message);
+
+      document.getElementById('dest-url').value = '';
+      document.getElementById('max-clicks').value = '';
+      refreshLinks();
+      showMessage('Link created!');
+    }
+
+    async function refreshLinks() {
+      const { data, error } = await supabase
+        .from('links')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) return showError(error.message);
+      links = data || [];
+      renderLinks();
+      updateStats();
+    }
+
+    function renderLinks() {
+      const container = document.getElementById('links-container');
+
+      if (links.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #94a3b8;">No links yet. Create one above!</div>';
+        return;
+      }
+
+      container.innerHTML = links.map(link => `
+        <div class="link-row">
+          <div><a href="${link.original_url}" target="_blank" style="color: #38bdf8;">${link.original_url.slice(0,40)}...</a></div>
+          <div><a href="${link.short_url}" target="_blank" class="copy-btn" onclick="event.preventDefault(); copyShortUrl('${link.short_url}')">Copy</a></div>
+          <div>${link.current_clicks}/${link.max_clicks || '∞'}</div>
+          <div class="${{'active': link.is_active && (!link.max_clicks || link.current_clicks < link.max_clicks), 'inactive': !link.is_active, 'expired': link.max_clicks && link.current_clicks >= link.max_clicks}[true]}">${{'active': 'Active', 'inactive': 'Disabled', 'expired': 'Expired'}[true]}</div>
+          <div class="timestamp">${new Date(link.created_at).toLocaleString()}</div>
+          <div class="timestamp">${link.last_accessed ? new Date(link.last_accessed).toLocaleString() : 'Never'}</div>
+          <div class="actions">
+            <button class="secondary" onclick="toggleLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">${link.is_active ? 'Disable' : 'Enable'}</button>
+            <button class="secondary" onclick="editLink('${link.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function toggleLink(id) {
+      const link = links.find(l => l.id === id);
+      const { error } = await supabase
+        .from('links')
+        .update({ is_active: !link.is_active })
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+
+      if (!error) refreshLinks();
+    }
+
+    async function editLink(id) {
+      const link = links.find(l => l.id === id);
+      const newUrl = prompt('New destination URL:', link.original_url);
+      if (newUrl && isValidUrl(newUrl)) {
+        const { error } = await supabase
+          .from('links')
+          .update({ original_url: newUrl })
+          .eq('id', id)
+          .eq('user_id', currentUser.id);
+        if (!error) refreshLinks();
+      }
+    }
+
+    function copyShortUrl(url) {
+      navigator.clipboard.writeText(url);
+      showMessage('Short URL copied!');
+    }
+
+    function updateStats() {
+      document.getElementById('total-links').textContent = links.length;
+      document.getElementById('total-clicks').textContent = links.reduce((sum, l) => sum + l.current_clicks, 0);
+      document.getElementById('active-links').textContent = links.filter(l => l.is_active && (!l.max_clicks || l.current_clicks < l.max_clicks)).length;
+    }
+
+    function showMessage(msg) {
+      const msgDiv = createErrorDiv();
+      msgDiv.id = 'msgDiv';
+      msgDiv.textContent = msg;
+      msgDiv.style.background = '#10b981';
+      setTimeout(() => msgDiv.remove(), 3000);
+    }
+
+    function isValidUrl(string) {
+      try { new URL(string); return true; } catch { return false; }
+    }
+
+    // Hash routing for anonymous short link redirects
+    async function handleRoute() {
+      const hashId = window.location.hash.slice(1);
+      if (!hashId) return;
+
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'none';
+
+      try {
+        const { data: link, error } = await supabase
+          .from('links')
+          .select('*')
+          .eq('id', hashId)
+          .single();
+
+        if (error || !link || !link.is_active || (link.max_clicks && link.current_clicks >= link.max_clicks)) {
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;"><div class="card" style="text-align:center;padding:3rem;"><h1 style="color:#ef4444;margin-bottom:1rem;">🔒 Link Inactive or Expired</h1><p style="color:#94a3b8;margin-bottom:1.5rem;">This destination is no longer available.</p><a href="/" style="color:#38bdf8;">Go to LinkHub Platform</a></div></div>';
+          return;
+        }
+
+        // Update click immediately
+        await supabase
+          .from('links')
+          .update({ current_clicks: link.current_clicks + 1, last_accessed: new Date().toISOString() })
+          .eq('id', link.id);
+
+        window.location.href = link.original_url;
+      } catch (err) {
+         document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;"><div class="card" style="text-align:center;padding:3rem;"><h1 style="color:#ef4444;margin-bottom:1rem;">⚠️ Configuration Error</h1><p style="color:#94a3b8;margin-bottom:1.5rem;">Supabase is not configured yet.</p><a href="/" style="color:#38bdf8;">Go to LinkHub Platform</a></div></div>';
+      }
+    }
+
+    window.addEventListener('hashchange', handleRoute);
+
+    // Initial load logic
+    const isRedirectRoute = !!window.location.hash;
+
+    if (isRedirectRoute) {
+      handleRoute();
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          currentUser = session.user;
+          showDashboard();
+        } else {
+          showAuth();
+        }
+      });
+
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+          currentUser = session.user;
+          showDashboard();
+        } else if (event === 'SIGNED_OUT') {
+          showAuth();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
